@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// Security rules for 60+ Friends photo storage.
+//  - Only signed-in users can read/write.
+//  - A user may only upload their OWN profile photo.
+//  - An activity photo may only be uploaded by that activity's creator.
+//  - Photos are readable by any signed-in user (shown in Discover/Activities).
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /profile_photos/{fileName} {
+      // fileName is "{uid}.jpg" — only the owning uid may write it.
+      function isOwner() {
+        return signedIn() && fileName == request.auth.uid + '.jpg';
+      }
+
+      allow read: if signedIn();
+      allow write: if isOwner() &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    match /activity_photos/{activityId}/{fileName} {
+      // Only the activity's creator may upload its photo.
+      function isCreator() {
+        return signedIn() &&
+          firestore.get(/databases/(default)/documents/activities/$(activityId))
+            .data.creatorId == request.auth.uid;
+      }
+
+      allow read: if signedIn();
+      allow write: if isCreator() &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+  }
+}

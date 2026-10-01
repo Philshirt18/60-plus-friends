@@ -1,0 +1,55 @@
+name: sixty_plus_friends
+description: "Meet people nearby. Share interests. Enjoy life together. A social connection app for people 60+."
+publish_to: 'none'
+version: 1.0.0+2
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_riverpod: ^2.5.1
+
+  # Routing
+  go_router: ^14.2.7
+
+  # Utilities
+  intl: ^0.19.0
+  uuid: ^4.4.2
+  collection: ^1.18.0
+  share_plus: ^10.0.2
+  shared_preferences: ^2.3.2
+  image_picker: ^1.1.2
+
+  # Monetization (RevenueCat) — real integration behind SubscriptionService.
+  purchases_flutter: ^10.13.1
+
+  # Backend (Firebase) — real integration behind AuthService / DataRepository.
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  firebase_storage: ^12.3.4
+  google_fonts: ^8.2.1
+
+  # NOTE: Notifications still behind an abstraction in lib/core/services.
+  # To enable OneSignal, uncomment below and provide config, then swap the
+  # implementation in lib/core/services/service_locator.dart.
+  #
+  # onesignal_flutter: ^5.2.6        # OneSignal push notifications
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/

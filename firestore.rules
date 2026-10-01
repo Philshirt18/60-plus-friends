@@ -1,0 +1,101 @@
+rules_version = '2';
+
+// Security rules for 60+ Friends.
+// Principles:
+//  - Only signed-in users can read/write.
+//  - A user may only create/update/delete their OWN profile and content.
+//  - Profiles are readable by any signed-in user (needed for discovery).
+//  - Interest expressions / passes are private to the sender.
+//  - Matches, conversations and messages are limited to their participants.
+//  - Reports are write-only for the reporter (not readable by clients).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isUser(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // ---- User profiles ----
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isUser(uid);
+      allow delete: if isUser(uid);
+
+      // A user's block list is private to them.
+      match /blocks/{blockedId} {
+        allow read, write: if isUser(uid);
+      }
+
+      // Private bookkeeping (e.g. the one-time starter-graph marker).
+      match /meta/{docId} {
+        allow read, write: if isUser(uid);
+      }
+    }
+
+    // ---- Interest expressions (id = "{from}_{to}") ----
+    match /interestExpressions/{pairId} {
+      allow read: if signedIn() &&
+        (resource == null || request.auth.uid == resource.data.from
+                           || request.auth.uid == resource.data.to);
+      allow create: if signedIn() && request.resource.data.from == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.from == request.auth.uid;
+    }
+
+    // ---- Passes ("not for me") — private to sender ----
+    match /passes/{pairId} {
+      allow read, write: if signedIn() &&
+        request.resource.data.from == request.auth.uid
+        || (resource != null && resource.data.from == request.auth.uid);
+    }
+
+    // ---- Matches — only the two participants ----
+    match /matches/{matchId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.users;
+      allow create: if signedIn() && request.auth.uid in request.resource.data.users;
+      allow update, delete: if signedIn() && request.auth.uid in resource.data.users;
+    }
+
+    // ---- Conversations & messages — only participants ----
+    match /conversations/{cid} {
+      allow read: if signedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if signedIn() &&
+        request.auth.uid in request.resource.data.participantIds;
+      allow update: if signedIn() && request.auth.uid in resource.data.participantIds;
+
+      match /messages/{mid} {
+        function convo() {
+          return get(/databases/$(database)/documents/conversations/$(cid)).data;
+        }
+        allow read: if signedIn() && request.auth.uid in convo().participantIds;
+        allow create: if signedIn() &&
+          request.resource.data.senderId == request.auth.uid &&
+          request.auth.uid in convo().participantIds;
+        allow update: if signedIn() && request.auth.uid in convo().participantIds;
+      }
+    }
+
+    // ---- Activities — anyone signed in can read; creator manages; joins allowed ----
+    match /activities/{aid} {
+      allow read: if signedIn();
+      allow create: if signedIn() &&
+        request.resource.data.creatorId == request.auth.uid;
+      // The creator can edit any field. Anyone else signed in may only
+      // change participantIds (joining/leaving).
+      allow update: if signedIn() &&
+        (resource.data.creatorId == request.auth.uid ||
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['participantIds']));
+      allow delete: if signedIn() && resource.data.creatorId == request.auth.uid;
+    }
+
+    // ---- Reports — clients may only file them, never read ----
+    match /reports/{rid} {
+      allow create: if signedIn() &&
+        request.resource.data.reporterId == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+  }
+}

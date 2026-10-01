@@ -1,0 +1,28 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "ios": {
+        "default": {
+          "projectId": "plusfriends-e9e17",
+          "appId": "1:399145013318:ios:a2a0593fa01066929f3a47",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "plusfriends-e9e17",
+          "configurations": {
+            "ios": "1:399145013318:ios:a2a0593fa01066929f3a47"
+          }
+        }
+      }
+    }
+  }
+}
